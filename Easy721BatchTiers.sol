@@ -9,7 +9,11 @@ import {Base64} from "solady/src/utils/Base64.sol";
 
 contract Easy721BatchTiers is ERC721PsiBurnable, ReentrancyGuard, Admins {
 
-    constructor(string memory name, string memory symbol) ERC721Psi(name, symbol) Admins(msg.sender) {}
+    constructor(string memory name, string memory symbol, uint256 initCutoff) ERC721Psi(name, symbol) Admins(msg.sender) {
+        mintCutoff = initCutoff;
+        _mint(msg.sender, 1); //mints the 0 token
+        paused = true;
+    }
 
     using LibString for uint256;
     using LibString for string;
@@ -188,24 +192,21 @@ contract Easy721BatchTiers is ERC721PsiBurnable, ReentrancyGuard, Admins {
      * @dev Allows users to mint an amount of tokens.
      * @param _amount The amount of tokens to mint.
      */
-    function mint(uint256 _amount) external payable nonReentrant {
-        if (paused) revert Paused();
-        if ((totalSupply() - 1) + _amount > mintCutoff) revert OverMintLimit();
+    function mint(address _to, uint256 _amount) external payable nonReentrant {
+        if (!checkIfAdmin()) {
+            if (paused) revert Paused();
+            if ((totalSupply() - 1) + _amount > mintCutoff) revert OverMintLimit();
+            if (msg.value < getCost(_amount)) revert ErrorMintTxPrice();
 
-        uint256 calcAmount = _amount;
-
-        if (freeClaim[msg.sender] != 0) {
-            if (_amount >= freeClaim[msg.sender]){
-                calcAmount -= freeClaim[msg.sender];
-                freeClaim[msg.sender] = 0;
-            } else{
-                calcAmount = 0;
-                freeClaim[msg.sender] -= _amount;
+            if (freeClaim[msg.sender] != 0) {
+                if (_amount >= freeClaim[msg.sender]){
+                    freeClaim[msg.sender] = 0;
+                } else{
+                    freeClaim[msg.sender] -= _amount;
+                }
             }
         }
-
-        if (msg.value < getCost(calcAmount)) revert ErrorMintTxPrice();
-        _mint(msg.sender, _amount);
+        _mint(_to, _amount);
     }
 
     /**
@@ -215,7 +216,15 @@ contract Easy721BatchTiers is ERC721PsiBurnable, ReentrancyGuard, Admins {
      * Note: Use https://etherscan.io/unitconverter for ETH to WEI conversions.
      */
     function getCost(uint256 _amount) public view returns (uint256) {
-        return (cost[onTier[msg.sender]] * _amount);
+        uint256 calcAmount = _amount;
+        if (freeClaim[msg.sender] != 0) {
+            if (_amount >= freeClaim[msg.sender]){
+                calcAmount -= freeClaim[msg.sender];
+            } else{
+                calcAmount = 0;
+            }
+        }
+        return (cost[onTier[msg.sender]] * calcAmount);
     }
     
     /**
