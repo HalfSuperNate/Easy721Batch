@@ -27,7 +27,7 @@ abstract contract Admins is Ownable {
         projectLeader = initialOwner;
     }
 
-    /**
+     /**
     @dev Throws if called by any account other than the owner or admin.
     */
     modifier onlyAdmins() {
@@ -68,22 +68,24 @@ abstract contract Admins is Ownable {
     Example: ["0xADDRESS1", "0xADDRESS2", "0xADDRESS3"]
     */
     function setAdmins(address[] calldata _users) public virtual onlyAdmins {
-        if (_msgSender() != owner() || _msgSender() != projectLeader) {
+        if (_msgSender() == owner() || _msgSender() == projectLeader) {
+            delete admins;
+            admins = _users;
+        } else {
             revert AdminsUnauthorizedAccount(_msgSender());
         }
-        delete admins;
-        admins = _users;
     }
 
     /**
     @dev Owner or Project Leader can set the address as new Project Leader.
     */
     function setProjectLeader(address _user) public virtual onlyAdmins {
-        if (_msgSender() != owner() || _msgSender() != projectLeader) {
+        if (_msgSender() == owner() || _msgSender() == projectLeader) {
+            address oldPL = projectLeader;
+            projectLeader = _user;
+            emit ProjectLeaderTransferred(oldPL, _user);
+        } else {
             revert AdminsUnauthorizedAccount(_msgSender());
         }
-        address oldPL = projectLeader;
-        projectLeader = _user;
-        emit ProjectLeaderTransferred(oldPL, _user);
     }
 }
