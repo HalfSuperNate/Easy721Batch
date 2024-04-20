@@ -245,7 +245,7 @@ contract Easy721MultiBatchTiers is Context, ERC721, ReentrancyGuard, Admins{
             batchExternalURL[_batch],
             '", "attributes": ', 
             getAttributes(_batch),
-            '"}'))));
+            '}'))));
 
             return string(abi.encodePacked('data:application/json;base64,', json));
         }
